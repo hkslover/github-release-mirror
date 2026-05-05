@@ -1,2 +1,5 @@
-/manifest.json
+/index.json
+  Cache-Control: public, max-age=60
+
+/*.json
   Cache-Control: public, max-age=60

@@ -17,21 +17,35 @@ from release_mirror.sync import SyncError, run_sync, write_json
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Sync GitHub releases to Cloudflare R2 and build manifest")
-    parser.add_argument("--deps", default="mirror/deps.yaml", help="Path to dependency config YAML")
     parser.add_argument(
-        "--output-manifest",
-        default="out/manifest.json",
-        help="Path to generated manifest.json",
+        "--projects",
+        default="mirror/projects.yaml",
+        help="Path to projects config YAML",
     )
     parser.add_argument(
-        "--previous-manifest",
+        "--output-dir",
+        default="out/pages",
+        help="Output directory for index.json and per-project manifests",
+    )
+    parser.add_argument(
+        "--previous-dir",
         default=None,
-        help="Path to previous manifest.json for change detection",
+        help="Directory containing previous pages payload for change detection",
     )
     parser.add_argument(
         "--result-json",
         default="out/sync-result.json",
         help="Path to write structured sync result",
+    )
+    parser.add_argument(
+        "--pages-custom-domain",
+        default=None,
+        help="Custom domain to write to CNAME (optional)",
+    )
+    parser.add_argument(
+        "--previous-cname-file",
+        default=None,
+        help="Fallback CNAME file from previous pages payload (optional)",
     )
     parser.add_argument(
         "--dry-run",
@@ -47,10 +61,12 @@ def main() -> int:
 
     try:
         result = run_sync(
-            deps_path=args.deps,
-            output_manifest_path=args.output_manifest,
-            previous_manifest_path=args.previous_manifest,
+            projects_path=args.projects,
+            output_dir=args.output_dir,
+            previous_dir=args.previous_dir,
             dry_run=args.dry_run,
+            pages_custom_domain=args.pages_custom_domain,
+            previous_cname_file=args.previous_cname_file,
         )
         write_json(args.result_json, result)
         print(json.dumps(result, ensure_ascii=False))

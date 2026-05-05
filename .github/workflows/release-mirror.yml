@@ -40,18 +40,17 @@ jobs:
       - name: Run unit tests
         run: PYTHONPATH=src python -m unittest discover -s tests -v
 
-      - name: Load previous manifest from pages branch
+      - name: Load previous pages payload
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p out
+          mkdir -p out/previous-pages
           if git ls-remote --exit-code --heads origin "${PAGES_BRANCH}" >/dev/null 2>&1; then
             git fetch origin "${PAGES_BRANCH}:refs/remotes/origin/${PAGES_BRANCH}"
-            git show "origin/${PAGES_BRANCH}:manifest.json" > out/previous-manifest.json || true
-            git show "origin/${PAGES_BRANCH}:CNAME" > out/previous-CNAME || true
+            git archive "origin/${PAGES_BRANCH}" | tar -x -C out/previous-pages
           fi
 
-      - name: Sync releases to R2 and generate manifest
+      - name: Sync releases to R2 and generate pages payload
         id: sync
         env:
           GH_RELEASE_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
@@ -64,13 +63,21 @@ jobs:
         run: |
           set -euo pipefail
           ARGS=(
-            --deps mirror/deps.yaml
-            --output-manifest out/manifest.json
+            --projects mirror/projects.yaml
+            --output-dir out/pages
             --result-json out/sync-result.json
           )
 
-          if [ -f out/previous-manifest.json ]; then
-            ARGS+=(--previous-manifest out/previous-manifest.json)
+          if [ -d out/previous-pages ]; then
+            ARGS+=(--previous-dir out/previous-pages)
+          fi
+
+          if [ -n "${PAGES_CUSTOM_DOMAIN}" ]; then
+            ARGS+=(--pages-custom-domain "${PAGES_CUSTOM_DOMAIN}")
+          fi
+
+          if [ -f out/previous-pages/CNAME ]; then
+            ARGS+=(--previous-cname-file out/previous-pages/CNAME)
           fi
 
           python scripts/sync_releases.py "${ARGS[@]}"
@@ -87,19 +94,9 @@ jobs:
               f.write(f"changed={changed}\n")
               f.write(f"uploaded={result.get('uploaded', 0)}\n")
               f.write(f"deleted={result.get('deleted', 0)}\n")
-              f.write(f"projects={result.get('projects', 0)}\n")
+              f.write(f"projects={result.get('projects_count', 0)}\n")
+              f.write(f"dependencies={result.get('dependencies_count', 0)}\n")
           PY
-
-      - name: Prepare Pages payload
-        if: steps.sync.outputs.changed == 'true'
-        run: |
-          mkdir -p out/pages
-          cp out/manifest.json out/pages/manifest.json
-          if [ -n "${PAGES_CUSTOM_DOMAIN}" ]; then
-            printf '%s\n' "${PAGES_CUSTOM_DOMAIN}" > out/pages/CNAME
-          elif [ -f out/previous-CNAME ]; then
-            cp out/previous-CNAME out/pages/CNAME
-          fi
 
       - name: Publish manifest to pages branch
         if: steps.sync.outputs.changed == 'true'
@@ -121,15 +118,9 @@ jobs:
 
           git rm -rf . >/dev/null 2>&1 || true
 
-          cp "${GITHUB_WORKSPACE}/out/pages/manifest.json" manifest.json
-          if [ -f "${GITHUB_WORKSPACE}/out/pages/CNAME" ]; then
-            cp "${GITHUB_WORKSPACE}/out/pages/CNAME" CNAME
-          fi
+          cp -R "${GITHUB_WORKSPACE}/out/pages/." .
 
-          git add manifest.json
-          if [ -f CNAME ]; then
-            git add CNAME
-          fi
+          git add -A
           if git diff --cached --quiet; then
             echo "No changes to publish"
             exit 0
@@ -137,5 +128,5 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: update release mirror manifest"
+          git commit -m "chore: update release mirror manifests"
           git push origin "HEAD:${PAGES_BRANCH}"

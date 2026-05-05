@@ -1,14 +1,24 @@
-# Release Mirror (GitHub -> R2 -> GitHub Pages)
+# Release Mirror v2 (GitHub -> R2 -> GitHub Pages)
 
-## What it does
+## Overview
 
-- Pulls stable GitHub releases (`draft=false`, `prerelease=false`) from repos defined in `mirror/deps.yaml`.
-- Keeps only `latest + previous` release assets in R2.
-- Builds a single `manifest.json` for your client.
-- Publishes `manifest.json` to `mirror-pages` branch for GitHub Pages.
-- Optionally writes/keeps a `CNAME` file for custom domain stability.
+- Config source: `mirror/projects.yaml`
+- Output: `index.json` + `{project_id}.json` files
+- Retention: latest-only per dependency
+- R2 object key: `{project_id}/{owner}/{repo}/{tag}/{asset}`
 
-## Required GitHub Secrets
+## Workflow behavior
+
+1. Load `projects.yaml`
+2. Read previous Pages payload from `mirror-pages` branch
+3. Fetch latest stable releases from GitHub API
+4. Compare old/new public manifest bundles (ignore `generated_at`)
+5. If changed:
+   - Upload missing assets to R2
+   - Delete stale assets from previous latest tags
+   - Publish new Pages payload
+
+## Required environment variables
 
 - `GH_RELEASE_TOKEN`
 - `R2_ENDPOINT`
@@ -17,57 +27,12 @@
 - `R2_BUCKET`
 - `R2_PUBLIC_BASE_URL`
 
-Optional (for immediate manifest cache refresh):
-- `PAGES_CUSTOM_DOMAIN` (can be configured in GitHub Actions Secrets or Variables)
+Optional:
 
-## Cache Strategy
+- `PAGES_CUSTOM_DOMAIN`
 
-### R2 asset cache headers
+## Notes
 
-All mirrored release assets are uploaded with:
-
-- `Cache-Control: public, max-age=31536000, immutable`
-
-This is safe because object keys are immutable version paths:
-
-- `{owner}/{repo}/{tag}/{asset}`
-
-## Cloudflare Dashboard Setup (one-time)
-
-1. Bind your R2 bucket to a **custom domain** (do not use `r2.dev` for production downloads).
-2. Create Cache Rules for release asset paths to make them cache-eligible.
-3. Enable Smart Tiered Cache.
-4. If release files are very large, confirm your plan's cacheable object-size limits.
-
-## GitHub Pages Setup (one-time)
-
-1. Repository `Settings -> Pages`
-2. Deploy from a branch: `mirror-pages`
-3. Folder: `/ (root)`
-4. If using custom domain, set `PAGES_CUSTOM_DOMAIN` and configure DNS CNAME to `hkslover.github.io`.
-
-## Local Dry Run
-
-```bash
-python -m pip install -r requirements.release-mirror.txt
-R2_PUBLIC_BASE_URL="https://downloads.example.com" \
-GH_RELEASE_TOKEN="ghp_xxx" \
-python scripts/sync_releases.py \
-  --deps mirror/deps.yaml \
-  --output-manifest out/manifest.json \
-  --result-json out/sync-result.json \
-  --dry-run
-```
-
-## Manifest shape
-
-`manifest.json` contains:
-
-- `generated_at`
-- `base_download_url`
-- `projects[].repo`
-- `projects[].latest`
-- `projects[].previous`
-- `assets[].name`
-- `assets[].url`
-- `assets[].size`
+- `include_patterns` is regex-based and validated during config loading.
+- If a dependency has no stable release, `latest` will be `null`.
+- CNAME is managed during payload generation to prevent custom-domain loss on branch overwrite.

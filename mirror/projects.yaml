@@ -1,0 +1,18 @@
+projects:
+  - id: cs2-highlight-tool-v2
+    name: cs2-highlight-tool-v2
+    enabled: true
+    dependencies:
+      - id: advancedfx
+        name: advancedfx
+        repo: advancedfx/advancedfx
+        enabled: true
+        include_patterns:
+          - "^hlae_\\d+(?:_\\d+)*\\.zip$"
+
+      - id: cs2-server-plugin
+        name: cs2-server-plugin
+        repo: hkslover/cs2-server-plugin
+        enabled: true
+        include_patterns:
+          - "^cs2-server-plugin-v\\d+(?:\\.\\d+)*-windows\\.zip$"

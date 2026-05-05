@@ -1,0 +1,18 @@
+projects:
+  - id: demo-project
+    name: Demo Project
+    enabled: true
+    dependencies:
+      - id: tool-linux
+        name: Tool Linux
+        repo: owner/tool-repo
+        enabled: true
+        include_patterns:
+          - "linux-amd64"
+
+      - id: tool-windows
+        name: Tool Windows
+        repo: owner/tool-repo
+        enabled: true
+        include_patterns:
+          - "\\.zip$"
