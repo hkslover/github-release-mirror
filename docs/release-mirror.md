@@ -1,11 +1,12 @@
-# Release Mirror (GitHub -> R2 -> Pages)
+# Release Mirror (GitHub -> R2 -> GitHub Pages)
 
 ## What it does
 
 - Pulls stable GitHub releases (`draft=false`, `prerelease=false`) from repos defined in `mirror/deps.yaml`.
 - Keeps only `latest + previous` release assets in R2.
 - Builds a single `manifest.json` for your client.
-- Publishes `manifest.json` to `mirror-pages` branch for Cloudflare Pages.
+- Publishes `manifest.json` to `mirror-pages` branch for GitHub Pages.
+- Optionally writes/keeps a `CNAME` file for custom domain stability.
 
 ## Required GitHub Secrets
 
@@ -17,10 +18,7 @@
 - `R2_PUBLIC_BASE_URL`
 
 Optional (for immediate manifest cache refresh):
-
-- `CF_API_TOKEN`
-- `CF_ZONE_ID`
-- `CF_MANIFEST_URL`
+- `PAGES_CUSTOM_DOMAIN` (can be configured in GitHub Actions Secrets or Variables)
 
 ## Cache Strategy
 
@@ -34,20 +32,19 @@ This is safe because object keys are immutable version paths:
 
 - `{owner}/{repo}/{tag}/{asset}`
 
-### Manifest cache headers
-
-`manifest.json` is served by Pages with:
-
-- `Cache-Control: public, max-age=60`
-
-Configured via `mirror/pages/_headers`.
-
 ## Cloudflare Dashboard Setup (one-time)
 
 1. Bind your R2 bucket to a **custom domain** (do not use `r2.dev` for production downloads).
 2. Create Cache Rules for release asset paths to make them cache-eligible.
 3. Enable Smart Tiered Cache.
 4. If release files are very large, confirm your plan's cacheable object-size limits.
+
+## GitHub Pages Setup (one-time)
+
+1. Repository `Settings -> Pages`
+2. Deploy from a branch: `mirror-pages`
+3. Folder: `/ (root)`
+4. If using custom domain, set `PAGES_CUSTOM_DOMAIN` and configure DNS CNAME to `hkslover.github.io`.
 
 ## Local Dry Run
 
@@ -74,4 +71,3 @@ python scripts/sync_releases.py \
 - `assets[].name`
 - `assets[].url`
 - `assets[].size`
-

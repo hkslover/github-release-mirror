@@ -1,6 +1,6 @@
-# GitHub Release 镜像到 Cloudflare R2 + Pages
+# GitHub Release 镜像到 Cloudflare R2 + GitHub Pages
 
-这个仓库用于自动同步多个 GitHub 开源项目的 **正式版 Release 资产** 到 Cloudflare R2，并通过 Cloudflare Pages 发布单一 `manifest.json`，供客户端统一拉取版本与下载地址。
+这个仓库用于自动同步多个 GitHub 开源项目的 **正式版 Release 资产** 到 Cloudflare R2，并通过 GitHub Pages 发布单一 `manifest.json`，供客户端统一拉取版本与下载地址。
 
 适用场景：
 - 你的主程序更新频率低，但依赖项目的 release 更新频率高。
@@ -14,15 +14,14 @@
 - 资产上传到 R2 时设置长期缓存头：
   - `Cache-Control: public, max-age=31536000, immutable`
 - 自动生成单一 `manifest.json`。
-- 将 `manifest.json` 推送到 `mirror-pages` 分支，触发 Cloudflare Pages 部署。
-- 可选：发布后调用 Cloudflare API 立即清理 `manifest.json` 缓存。
+- 将 `manifest.json` 推送到 `mirror-pages` 分支，供 GitHub Pages 直接发布。
+- 支持自动维护 `CNAME` 文件（自定义子域名不丢失）。
 
 ## 仓库结构
 
 ```text
 .github/workflows/release-mirror.yml   # GitHub Actions 工作流
 mirror/deps.yaml                        # 依赖仓库与资产过滤规则
-mirror/pages/_headers                   # Pages 响应头（manifest 缓存策略）
 scripts/sync_releases.py                # 同步入口脚本
 src/release_mirror/sync.py              # 核心同步逻辑
 tests/test_sync.py                      # 单元测试
@@ -77,10 +76,8 @@ dependencies:
 - `R2_BUCKET`
 - `R2_PUBLIC_BASE_URL`
 
-选填（用于发布后立即清理 manifest 缓存）：
-- `CF_API_TOKEN`
-- `CF_ZONE_ID`
-- `CF_MANIFEST_URL`
+选填（用于 GitHub Pages 自定义域名）：
+- `PAGES_CUSTOM_DOMAIN`（可放在 `Secrets` 或 `Variables`，例如 `updates.snowblog.xyz`）
 
 ## 第三步：配置 Cloudflare
 
@@ -90,22 +87,23 @@ dependencies:
 - 绑定 **自定义域名**（生产环境不建议直接用 `r2.dev`）。
 - 该自定义域名应与 `R2_PUBLIC_BASE_URL` 一致。
 
-### 2) Pages
-
-- 创建 Cloudflare Pages 项目并连接本仓库。
-- 将 **Production branch** 指向 `mirror-pages`。
-- 该分支只需要部署：
-  - `manifest.json`
-  - `_headers`
-
-### 3) 缓存策略建议
+### 2) 缓存策略建议
 
 - 对 release 资产路径启用缓存（Cache Rules）。
 - 开启 Smart Tiered Cache。
-- `manifest.json` 使用短缓存（本仓库默认 `max-age=60`）。
 - 大文件注意 Cloudflare 套餐的可缓存单文件大小限制。
 
-## 第四步：触发同步
+## 第四步：配置 GitHub Pages
+
+1. 进入仓库 `Settings -> Pages`
+2. `Build and deployment` 选择 `Deploy from a branch`
+3. Branch 选择 `mirror-pages`，目录选择 `/ (root)`
+4. 如果使用自定义子域名：
+   - 在 Pages 的 `Custom domain` 填你自己的域名
+   - 同时设置 `PAGES_CUSTOM_DOMAIN`，让 workflow 自动保留 `CNAME` 文件
+   - 在 Cloudflare DNS 添加 `CNAME` 到 `hkslover.github.io`
+
+## 第五步：触发同步
 
 工作流文件是 `.github/workflows/release-mirror.yml`。
 
@@ -172,10 +170,10 @@ python3 scripts/sync_releases.py \
 - 通常是“对比后无变化”，这是预期行为。
 - 只有检测到内容变化才会推送 `mirror-pages`。
 
-### 3) 为什么 manifest 缓存这么短？
+### 3) 自定义域名为什么会“自己消失”？
 
-- 为了让客户端尽快看到新版本。
-- 资产 URL 是版本化不可变路径，可放心长缓存。
+- 通常是部署覆盖了发布分支里的 `CNAME` 文件。
+- 本仓库已支持自动写入/保留 `CNAME`，请设置 `PAGES_CUSTOM_DOMAIN`。
 
 ## 参考文档
 

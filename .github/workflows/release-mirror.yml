@@ -10,6 +10,7 @@ permissions:
 
 env:
   PAGES_BRANCH: mirror-pages
+  PAGES_CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN || secrets.PAGES_CUSTOM_DOMAIN }}
 
 jobs:
   mirror:
@@ -47,6 +48,7 @@ jobs:
           if git ls-remote --exit-code --heads origin "${PAGES_BRANCH}" >/dev/null 2>&1; then
             git fetch origin "${PAGES_BRANCH}:refs/remotes/origin/${PAGES_BRANCH}"
             git show "origin/${PAGES_BRANCH}:manifest.json" > out/previous-manifest.json || true
+            git show "origin/${PAGES_BRANCH}:CNAME" > out/previous-CNAME || true
           fi
 
       - name: Sync releases to R2 and generate manifest
@@ -93,7 +95,11 @@ jobs:
         run: |
           mkdir -p out/pages
           cp out/manifest.json out/pages/manifest.json
-          cp mirror/pages/_headers out/pages/_headers
+          if [ -n "${PAGES_CUSTOM_DOMAIN}" ]; then
+            printf '%s\n' "${PAGES_CUSTOM_DOMAIN}" > out/pages/CNAME
+          elif [ -f out/previous-CNAME ]; then
+            cp out/previous-CNAME out/pages/CNAME
+          fi
 
       - name: Publish manifest to pages branch
         if: steps.sync.outputs.changed == 'true'
@@ -116,9 +122,14 @@ jobs:
           git rm -rf . >/dev/null 2>&1 || true
 
           cp "${GITHUB_WORKSPACE}/out/pages/manifest.json" manifest.json
-          cp "${GITHUB_WORKSPACE}/out/pages/_headers" _headers
+          if [ -f "${GITHUB_WORKSPACE}/out/pages/CNAME" ]; then
+            cp "${GITHUB_WORKSPACE}/out/pages/CNAME" CNAME
+          fi
 
-          git add manifest.json _headers
+          git add manifest.json
+          if [ -f CNAME ]; then
+            git add CNAME
+          fi
           if git diff --cached --quiet; then
             echo "No changes to publish"
             exit 0
@@ -128,25 +139,3 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: update release mirror manifest"
           git push origin "HEAD:${PAGES_BRANCH}"
-
-      - name: Purge manifest cache on Cloudflare (optional)
-        if: steps.sync.outputs.changed == 'true' && secrets.CF_API_TOKEN != '' && secrets.CF_ZONE_ID != '' && secrets.CF_MANIFEST_URL != ''
-        env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
-          CF_MANIFEST_URL: ${{ secrets.CF_MANIFEST_URL }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -sS -X POST \
-            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            --data "{\"files\":[\"${CF_MANIFEST_URL}\"]}" \
-            | tee /tmp/cf-purge.json
-
-          if ! grep -q '"success":true' /tmp/cf-purge.json; then
-            echo "Cloudflare purge failed"
-            cat /tmp/cf-purge.json
-            exit 1
-          fi
