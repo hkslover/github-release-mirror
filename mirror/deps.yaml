@@ -1,0 +1,10 @@
+dependencies:
+  - repo: advancedfx/advancedfx
+    enabled: true
+    include_patterns:
+      - "^hlae_\\d+(?:_\\d+)*\\.zip$"
+
+  - repo: hkslover/cs2-server-plugin
+    enabled: true
+    include_patterns:
+      - "^cs2-server-plugin-v\\d+(?:\\.\\d+)*-windows\\.zip$"

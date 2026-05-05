@@ -1,0 +1,152 @@
+name: release-mirror
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PAGES_BRANCH: mirror-pages
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-mirror
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: requirements.release-mirror.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.release-mirror.txt
+
+      - name: Run unit tests
+        run: PYTHONPATH=src python -m unittest discover -s tests -v
+
+      - name: Load previous manifest from pages branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          if git ls-remote --exit-code --heads origin "${PAGES_BRANCH}" >/dev/null 2>&1; then
+            git fetch origin "${PAGES_BRANCH}:refs/remotes/origin/${PAGES_BRANCH}"
+            git show "origin/${PAGES_BRANCH}:manifest.json" > out/previous-manifest.json || true
+          fi
+
+      - name: Sync releases to R2 and generate manifest
+        id: sync
+        env:
+          GH_RELEASE_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARGS=(
+            --deps mirror/deps.yaml
+            --output-manifest out/manifest.json
+            --result-json out/sync-result.json
+          )
+
+          if [ -f out/previous-manifest.json ]; then
+            ARGS+=(--previous-manifest out/previous-manifest.json)
+          fi
+
+          python scripts/sync_releases.py "${ARGS[@]}"
+
+          python - <<'PY'
+          import json
+          import os
+
+          with open('out/sync-result.json', 'r', encoding='utf-8') as f:
+              result = json.load(f)
+
+          changed = 'true' if result.get('changed') else 'false'
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+              f.write(f"changed={changed}\n")
+              f.write(f"uploaded={result.get('uploaded', 0)}\n")
+              f.write(f"deleted={result.get('deleted', 0)}\n")
+              f.write(f"projects={result.get('projects', 0)}\n")
+          PY
+
+      - name: Prepare Pages payload
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          mkdir -p out/pages
+          cp out/manifest.json out/pages/manifest.json
+          cp mirror/pages/_headers out/pages/_headers
+
+      - name: Publish manifest to pages branch
+        if: steps.sync.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKTREE_DIR="$(mktemp -d)"
+
+          if git ls-remote --exit-code --heads origin "${PAGES_BRANCH}" >/dev/null 2>&1; then
+            git fetch origin "${PAGES_BRANCH}:refs/remotes/origin/${PAGES_BRANCH}"
+            git worktree add "${WORKTREE_DIR}" "origin/${PAGES_BRANCH}"
+            cd "${WORKTREE_DIR}"
+            git checkout -B "${PAGES_BRANCH}"
+          else
+            git worktree add --detach "${WORKTREE_DIR}"
+            cd "${WORKTREE_DIR}"
+            git checkout --orphan "${PAGES_BRANCH}"
+          fi
+
+          git rm -rf . >/dev/null 2>&1 || true
+
+          cp "${GITHUB_WORKSPACE}/out/pages/manifest.json" manifest.json
+          cp "${GITHUB_WORKSPACE}/out/pages/_headers" _headers
+
+          git add manifest.json _headers
+          if git diff --cached --quiet; then
+            echo "No changes to publish"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: update release mirror manifest"
+          git push origin "HEAD:${PAGES_BRANCH}"
+
+      - name: Purge manifest cache on Cloudflare (optional)
+        if: steps.sync.outputs.changed == 'true' && secrets.CF_API_TOKEN != '' && secrets.CF_ZONE_ID != '' && secrets.CF_MANIFEST_URL != ''
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CF_MANIFEST_URL: ${{ secrets.CF_MANIFEST_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS -X POST \
+            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"files\":[\"${CF_MANIFEST_URL}\"]}" \
+            | tee /tmp/cf-purge.json
+
+          if ! grep -q '"success":true' /tmp/cf-purge.json; then
+            echo "Cloudflare purge failed"
+            cat /tmp/cf-purge.json
+            exit 1
+          fi
