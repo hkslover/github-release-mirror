@@ -1,59 +1,69 @@
-# GitHub Release Mirror Template (R2 + GitHub Pages)
+# Release Mirror Template
 
-这个模板仓库用于同步 GitHub Release 资产到 Cloudflare R2，并发布 manifest 到 GitHub Pages。
+把多个 GitHub 仓库的 Release 资产自动同步到 Cloudflare R2，并通过 GitHub Pages 发布统一 manifest，给客户端做版本发现与多下载源分发。
 
-## 功能
+## 这个模板解决什么问题
 
-- 多项目配置：一个仓库可以维护多个 `project`。
-- 每个项目支持多个依赖 `dependency`。
-- 仅同步稳定版 release（`draft=false` 且 `prerelease=false`）。
-- 每个依赖只保留 `latest`（不再保留 previous）。
-- R2 资产默认上传缓存头：
-  - `Cache-Control: public, max-age=31536000, immutable`
-- Pages 发布：
-  - `index.json`
-  - `{project_id}.json`
-  - `CNAME`（可选，自动维护）
+- 依赖项目更新频繁，但你的主程序不需要频繁发版。
+- GitHub 直连在部分地区不稳定。
+- 你希望客户端拿到同一份清单，同时支持：
+  - R2 CDN 地址
+  - GitHub 官方地址
+  - 国内代理镜像地址（`https://gh-proxy.org/` 前缀）
 
-## 目录结构
+## 核心特性
 
-```text
-.github/workflows/release-mirror.yml
-mirror/projects.yaml
-mirror/projects.example.yaml
-scripts/sync_releases.py
-src/release_mirror/sync.py
-tests/test_sync.py
-```
+- 多项目：`projects.yaml` 支持多个 `project`，每个项目多个 `dependency`。
+- 仅稳定版：自动忽略 `draft` / `prerelease`。
+- latest-only：每个依赖只保留最新版本资产。
+- 三种下载地址同时输出：
+  - `url`（R2）
+  - `github_url`（GitHub 官方）
+  - `mirror_url`（`https://gh-proxy.org/{github_url}`）
+- 自动发布到 `mirror-pages` 分支（GitHub Pages）。
+- 自动维护 `CNAME`（可选）。
 
-## 1) 配置项目
+## 工作流概览
 
-编辑 `mirror/projects.yaml`：
+1. 读取 `mirror/projects.yaml`
+2. 拉取 GitHub Release 元信息
+3. 计算目标 manifest（`index.json + {project_id}.json`）
+4. 与上次发布内容比较
+5. 有变化才执行：
+   - 上传新增资产到 R2
+   - 删除过期资产
+   - 发布新 manifest 到 `mirror-pages`
+
+## 5 分钟快速开始
+
+### 1) 配置项目
+
+编辑 `mirror/projects.yaml`（可参考 `mirror/projects.example.yaml`）：
 
 ```yaml
 projects:
-  - id: demo-project
-    name: Demo Project
+  - id: cs2-highlight-tool-v2
+    name: cs2-highlight-tool-v2
     enabled: true
     dependencies:
-      - id: tool-linux
-        name: Tool Linux
-        repo: owner/tool-repo
+      - id: advancedfx
+        name: advancedfx
+        repo: advancedfx/advancedfx
         enabled: true
         include_patterns:
-          - "linux-amd64"
+          - "^hlae_\\d+(?:_\\d+)*\\.zip$"
 ```
 
-字段说明：
+字段规则：
 
-- `project.id`：全局唯一，建议使用 `a-zA-Z0-9._-`。
-- `dependency.id`：在同一个 project 内唯一。
-- `repo`：必须是 `owner/name`。
-- `include_patterns`：正则表达式数组，匹配资产文件名。
+- `project.id`：全局唯一，建议 `a-zA-Z0-9._-`
+- `dependency.id`：同一 project 内唯一
+- `repo`：必须是 `owner/name`
+- `include_patterns`：正则列表，按资产文件名过滤
 
-## 2) GitHub Secrets
+### 2) 配置 GitHub Secrets
 
-在仓库 `Settings -> Secrets and variables -> Actions` 设置：
+仓库路径：`Settings -> Secrets and variables -> Actions`
 
 必填：
 
@@ -66,29 +76,93 @@ projects:
 
 选填：
 
-- `PAGES_CUSTOM_DOMAIN`
-  - 例如 `updates.snowblog.xyz`
-  - 设置后 workflow 会持续生成/覆盖 `CNAME`，避免 Pages 分支更新时域名丢失
+- `PAGES_CUSTOM_DOMAIN`（例如 `updates.example.com`）
 
-## 3) GitHub Pages 配置
+### 3) 启用 GitHub Pages
 
-1. 进入 `Settings -> Pages`
-2. `Deploy from a branch`
-3. Branch 选 `mirror-pages`
-4. Folder 选 `/ (root)`
-5. 如果要自定义域名：
-   - 在 Pages UI 里填写域名
-   - 同时建议设置 `PAGES_CUSTOM_DOMAIN`（防覆盖）
-   - DNS 配置 `CNAME` 到 `<your-user>.github.io`
+1. `Settings -> Pages`
+2. Source 选择 `Deploy from a branch`
+3. Branch 选择 `mirror-pages`，目录 `/ (root)`
+4. 如果用自定义域名：
+   - 在 Pages 里设置 Custom domain
+   - 同时配置 `PAGES_CUSTOM_DOMAIN`（避免分支覆盖时丢失 CNAME）
 
-## 4) 手动运行测试
+### 4) 运行一次 Workflow
+
+进入 `Actions -> release-mirror -> Run workflow` 手动触发一次。
+
+## manifest 结构
+
+### `index.json`
+
+```json
+{
+  "generated_at": "2026-05-06T00:00:00Z",
+  "base_download_url": "https://downloads.example.com",
+  "projects": {
+    "cs2-highlight-tool-v2": {
+      "name": "cs2-highlight-tool-v2",
+      "manifest": "cs2-highlight-tool-v2.json"
+    }
+  }
+}
+```
+
+### `{project_id}.json`
+
+```json
+{
+  "generated_at": "2026-05-06T00:00:00Z",
+  "base_download_url": "https://downloads.example.com",
+  "project": {
+    "id": "cs2-highlight-tool-v2",
+    "name": "cs2-highlight-tool-v2"
+  },
+  "dependencies": {
+    "advancedfx": {
+      "name": "advancedfx",
+      "repo": "advancedfx/advancedfx",
+      "latest_tag": "v1.2.3",
+      "latest": {
+        "tag": "v1.2.3",
+        "tag_name": "v1.2.3",
+        "published_at": "2026-05-06T00:00:00Z",
+        "assets": [
+          {
+            "name": "a.zip",
+            "size": 123,
+            "url": "https://downloads.example.com/...",
+            "github_url": "https://github.com/.../a.zip",
+            "mirror_url": "https://gh-proxy.org/https://github.com/.../a.zip"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+下载字段含义：
+
+- `url`：R2 地址（兼容旧客户端）
+- `github_url`：GitHub 官方下载地址
+- `mirror_url`：国内代理镜像地址
+
+## 本地调试
+
+安装依赖：
 
 ```bash
 python3 -m pip install -r requirements.release-mirror.txt
+```
+
+运行测试：
+
+```bash
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-本地 dry-run（不上传 R2、不删除旧对象）：
+只做 dry-run（不上传/删除 R2）：
 
 ```bash
 R2_PUBLIC_BASE_URL="https://downloads.example.com" \
@@ -100,37 +174,34 @@ python3 scripts/sync_releases.py \
   --dry-run
 ```
 
-## 5) manifest v2 结构
+## 项目结构
 
-`index.json`：
-
-- `generated_at`
-- `base_download_url`
-- `projects`（`project_id -> {name, manifest}`）
-
-`{project_id}.json`：
-
-- `generated_at`
-- `base_download_url`
-- `project.id / project.name`
-- `dependencies`（`dependency_id` 做 key）
-- `dependencies[dep].latest_tag`
-- `dependencies[dep].latest.tag`
-- `dependencies[dep].latest.assets[].name/size/url/github_url/mirror_url`
-
-字段语义：
-
-- `url`：R2 下载地址（兼容旧客户端）。
-- `github_url`：GitHub 官方 release 下载地址。
-- `mirror_url`：固定规则 `https://gh-proxy.org/{github_url}` 的国内镜像地址。
+```text
+.github/workflows/release-mirror.yml
+mirror/projects.yaml
+scripts/sync_releases.py
+src/release_mirror/config.py
+src/release_mirror/github_api.py
+src/release_mirror/manifest.py
+src/release_mirror/r2.py
+src/release_mirror/orchestrator.py
+src/release_mirror/sync.py
+tests/test_config.py
+tests/test_github_api.py
+tests/test_manifest.py
+tests/test_r2.py
+```
 
 ## FAQ
 
-### CNAME 必须提交到分支吗？
+### 1) 已经是最新版本，还会上传 R2 吗？
 
-如果发布分支是由 workflow 重写，建议每次发布都写入 `CNAME`，否则可能被覆盖掉。  
-只在 Pages UI 设置域名，不保证分支重建后仍保留。
+不会。只有 manifest 内容变化时才会做 R2 上传/删除。
 
-### `R2_ACCESS_KEY_ID` 和 `R2_SECRET_ACCESS_KEY` 是同一个吗？
+### 2) `R2_ACCESS_KEY_ID` 和 `R2_SECRET_ACCESS_KEY` 是同一个吗？
 
-不是。它们是一对 S3 API 凭据，必须分别填写。
+不是。它们是一对凭据，必须分别配置。
+
+### 3) 只在 Pages UI 里设置域名够不够？
+
+不完全够。因为发布分支会被工作流重写，建议同时设置 `PAGES_CUSTOM_DOMAIN`，确保 `CNAME` 持续存在。
