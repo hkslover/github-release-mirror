@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-05-06T09:32:10Z",
+  "base_download_url": "dl.snowblog.xyz",
+  "projects": {
+    "cs2-highlight-tool-v2": {
+      "name": "cs2-highlight-tool-v2",
+      "manifest": "cs2-highlight-tool-v2.json"
+    }
+  }
+}

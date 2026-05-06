@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-05-06T09:32:10Z",
+  "base_download_url": "dl.snowblog.xyz",
+  "project": {
+    "id": "cs2-highlight-tool-v2",
+    "name": "cs2-highlight-tool-v2"
+  },
+  "dependencies": {
+    "advancedfx": {
+      "name": "advancedfx",
+      "repo": "advancedfx/advancedfx",
+      "latest_tag": "v2.189.9",
+      "latest": {
+        "tag": "v2.189.9",
+        "tag_name": "v2.189.9",
+        "published_at": "2026-04-22T00:02:17Z",
+        "assets": [
+          {
+            "name": "hlae_2_189_9.zip",
+            "size": 8633965,
+            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/advancedfx/advancedfx/v2.189.9/hlae_2_189_9.zip",
+            "github_url": "https://github.com/advancedfx/advancedfx/releases/download/v2.189.9/hlae_2_189_9.zip",
+            "mirror_url": "https://gh-proxy.org/https://github.com/advancedfx/advancedfx/releases/download/v2.189.9/hlae_2_189_9.zip"
+          }
+        ]
+      }
+    },
+    "cs2-server-plugin": {
+      "name": "cs2-server-plugin",
+      "repo": "hkslover/cs2-server-plugin",
+      "latest_tag": "v0.0.2",
+      "latest": {
+        "tag": "v0.0.2",
+        "tag_name": "v0.0.2",
+        "published_at": "2026-04-24T05:57:02Z",
+        "assets": [
+          {
+            "name": "cs2-server-plugin-v0.0.2-windows.zip",
+            "size": 85118,
+            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/hkslover/cs2-server-plugin/v0.0.2/cs2-server-plugin-v0.0.2-windows.zip",
+            "github_url": "https://github.com/hkslover/cs2-server-plugin/releases/download/v0.0.2/cs2-server-plugin-v0.0.2-windows.zip",
+            "mirror_url": "https://gh-proxy.org/https://github.com/hkslover/cs2-server-plugin/releases/download/v0.0.2/cs2-server-plugin-v0.0.2-windows.zip"
+          }
+        ]
+      }
+    }
+  }
+}
