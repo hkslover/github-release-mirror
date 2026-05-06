@@ -6,6 +6,10 @@
 - Output: `index.json` + `{project_id}.json` files
 - Retention: latest-only per dependency
 - R2 object key: `{project_id}/{owner}/{repo}/{tag}/{asset}`
+- Asset URLs in manifest:
+  - `url`: R2 URL
+  - `github_url`: GitHub official release URL
+  - `mirror_url`: `https://gh-proxy.org/{github_url}`
 
 ## Workflow behavior
 
@@ -36,3 +40,5 @@ Optional:
 - `include_patterns` is regex-based and validated during config loading.
 - If a dependency has no stable release, `latest` will be `null`.
 - CNAME is managed during payload generation to prevent custom-domain loss on branch overwrite.
+- `sync.py` is now a compatibility export layer; logic is split into
+  `config.py`, `github_api.py`, `manifest.py`, `r2.py`, `orchestrator.py`.

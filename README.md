@@ -116,7 +116,13 @@ python3 scripts/sync_releases.py \
 - `dependencies`（`dependency_id` 做 key）
 - `dependencies[dep].latest_tag`
 - `dependencies[dep].latest.tag`
-- `dependencies[dep].latest.assets[].name/url/size`
+- `dependencies[dep].latest.assets[].name/size/url/github_url/mirror_url`
+
+字段语义：
+
+- `url`：R2 下载地址（兼容旧客户端）。
+- `github_url`：GitHub 官方 release 下载地址。
+- `mirror_url`：固定规则 `https://gh-proxy.org/{github_url}` 的国内镜像地址。
 
 ## FAQ
 
