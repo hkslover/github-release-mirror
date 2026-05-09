@@ -46,19 +46,19 @@
     }
   },
   "ads": {
-    "version": "1.0",
+    "version": "2.0",
     "updated_at": "2026-05-09T12:00:00Z",
     "items": [
       {
-        "id": "sponsor_001",
+        "id": "sponsor_card_001",
         "enabled": true,
         "placement": "main_steps_top_banner",
-        "priority": 200,
-        "start_at": "2026-05-01T00:00:00Z",
-        "end_at": "2026-06-01T00:00:00Z",
-        "click_url": "https://example.com/",
+        "click_url": "https://sponsor.example.com/landing",
+        "sponsor": "某某赞助方",
+        "title": "限时活动：XX 工具优惠",
+        "rich_html": "<p>支持 <strong>富文本</strong>，可含 <a href=\"https://sponsor.example.com/detail\" target=\"_blank\">详情链接</a></p>",
         "image_url": "https://img.cdn1.vip/i/69ff3be07fb69_1778334688.webp",
-        "alt": "赞助广告 1"
+        "image_alt": "赞助卡片封面"
       }
     ]
   }
