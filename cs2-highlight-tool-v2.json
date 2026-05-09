@@ -50,50 +50,15 @@
     "updated_at": "2026-05-09T12:00:00Z",
     "items": [
       {
-        "id": "ad_image_001",
+        "id": "sponsor_001",
         "enabled": true,
         "placement": "main_steps_top_banner",
         "priority": 200,
         "start_at": "2026-05-01T00:00:00Z",
-        "end_at": "2026-12-31T23:59:59Z",
-        "render_type": "image",
-        "click_url": "https://ad.example.com/campaign-a",
-        "open_mode": "external_browser",
-        "content": {
-          "image_url": "https://cdn.example.com/ad-a.jpg",
-          "alt": "赞助广告",
-          "title": "活动标题",
-          "subtitle": "活动副标题",
-          "cta_text": "立即查看"
-        }
-      },
-      {
-        "id": "ad_text_001",
-        "enabled": true,
-        "placement": "main_steps_top_banner",
-        "priority": 180,
-        "render_type": "text",
-        "click_url": "https://ad.example.com/campaign-b",
-        "open_mode": "external_browser",
-        "content": {
-          "title": "文字广告标题",
-          "body": "文字广告内容",
-          "cta_text": "查看详情",
-          "icon_url": "https://cdn.example.com/icon-b.png"
-        }
-      },
-      {
-        "id": "ad_html_001",
-        "enabled": true,
-        "placement": "main_steps_top_banner",
-        "priority": 160,
-        "render_type": "html",
-        "click_url": "https://ad.example.com/campaign-c",
-        "open_mode": "external_browser",
-        "content": {
-          "html": "<div><strong>HTML广告</strong><p>支持白名单标签</p></div>",
-          "max_height": 120
-        }
+        "end_at": "2026-06-01T00:00:00Z",
+        "click_url": "https://example.com/",
+        "image_url": "https://img.cdn1.vip/i/69ff3be07fb69_1778334688.webp",
+        "alt": "赞助广告 1"
       }
     ]
   }
