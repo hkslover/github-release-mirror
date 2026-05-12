@@ -57,7 +57,7 @@
         "sponsor": "Snow",
         "title": "广告位招租",
         "rich_html": "<a href=\"mailto:hk_snow@yeah.net\" target=\"_blank\">联系我们</a>",
-        "image_url": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='144'><rect width='100%25' height='100%25' fill='%230b3b2e'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23d1fae5' font-size='20'>广告位招租</text></svg>",
+        "image_url": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><rect width='100%25' height='100%25' fill='%230b3b2e'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23d1fae5' font-size='20'>广告位招租</text></svg>",
         "image_alt": "广告位招租"
       }
     ]
