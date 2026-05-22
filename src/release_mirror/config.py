@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -20,10 +21,30 @@ class Dependency:
 
 
 @dataclass(frozen=True)
+class AdItem:
+    id: str
+    placement: str
+    click_url: str
+    sponsor: str
+    title: str
+    rich_html: str
+    image_url: str
+    image_alt: str
+    enabled: bool = True
+
+
+@dataclass(frozen=True)
+class AdsConfig:
+    version: str
+    items: list[AdItem]
+
+
+@dataclass(frozen=True)
 class Project:
     id: str
     name: str
     dependencies: list[Dependency]
+    ads: AdsConfig | None = None
     enabled: bool = True
 
 
@@ -60,6 +81,27 @@ def _validate_regex_patterns(patterns: list[str], context: str) -> None:
             raise SyncError(f"Invalid include_patterns regex '{pattern}' in {context}: {exc}") from exc
 
 
+def _require_non_empty_string(value: Any, field: str, context: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise SyncError(f"{context} is missing required field: {field}")
+    return value.strip()
+
+
+def _require_required_string(value: Any, field: str, context: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise SyncError(f"{context} is missing required field: {field}")
+    return value
+
+
+def _validate_http_url(value: str, field: str, context: str) -> str:
+    parsed = urllib.parse.urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise SyncError(
+            f"Invalid {field} '{value}' in {context}, expected http/https URL"
+        )
+    return value
+
+
 def load_projects(path: str | Path) -> list[Project]:
     try:
         import yaml
@@ -86,6 +128,79 @@ def load_projects(path: str | Path) -> list[Project]:
         if project_id in seen_project_ids:
             raise SyncError(f"Duplicate project.id '{project_id}'")
         seen_project_ids.add(project_id)
+
+        ads: AdsConfig | None = None
+        raw_ads = project_obj.get("ads")
+        if raw_ads is not None:
+            ads_obj = _as_dict(raw_ads, f"ads in project '{project_id}'")
+            ads_version = _require_non_empty_string(
+                ads_obj.get("version"),
+                "version",
+                f"ads in project '{project_id}'",
+            )
+            raw_ads_items = _as_list(
+                ads_obj.get("items", []), f"ads.items in project '{project_id}'"
+            )
+            ads_items: list[AdItem] = []
+            seen_ad_ids: set[str] = set()
+            for raw_ad_item in raw_ads_items:
+                ad_item_obj = _as_dict(
+                    raw_ad_item, f"ads item in project '{project_id}'"
+                )
+                ad_id = _validate_id("ads.item.id", str(ad_item_obj.get("id", "")))
+                if ad_id in seen_ad_ids:
+                    raise SyncError(
+                        f"Duplicate ads.item.id '{ad_id}' in project '{project_id}'"
+                    )
+                seen_ad_ids.add(ad_id)
+
+                ad_context = f"ads item '{ad_id}' in project '{project_id}'"
+                placement = _require_non_empty_string(
+                    ad_item_obj.get("placement"), "placement", ad_context
+                )
+                click_url = _validate_http_url(
+                    _require_non_empty_string(
+                        ad_item_obj.get("click_url"), "click_url", ad_context
+                    ),
+                    "click_url",
+                    ad_context,
+                )
+                sponsor = _require_non_empty_string(
+                    ad_item_obj.get("sponsor"), "sponsor", ad_context
+                )
+                title = _require_non_empty_string(
+                    ad_item_obj.get("title"), "title", ad_context
+                )
+                rich_html = _require_required_string(
+                    ad_item_obj.get("rich_html"), "rich_html", ad_context
+                )
+                image_url = _validate_http_url(
+                    _require_non_empty_string(
+                        ad_item_obj.get("image_url"), "image_url", ad_context
+                    ),
+                    "image_url",
+                    ad_context,
+                )
+                image_alt = _require_non_empty_string(
+                    ad_item_obj.get("image_alt"), "image_alt", ad_context
+                )
+
+                if bool(ad_item_obj.get("enabled", True)):
+                    ads_items.append(
+                        AdItem(
+                            id=ad_id,
+                            placement=placement,
+                            click_url=click_url,
+                            sponsor=sponsor,
+                            title=title,
+                            rich_html=rich_html,
+                            image_url=image_url,
+                            image_alt=image_alt,
+                            enabled=True,
+                        )
+                    )
+
+            ads = AdsConfig(version=ads_version, items=ads_items)
 
         dependencies: list[Dependency] = []
         seen_dependency_ids: set[str] = set()
@@ -144,6 +259,7 @@ def load_projects(path: str | Path) -> list[Project]:
                     id=project_id,
                     name=project_name,
                     dependencies=sorted(dependencies, key=lambda item: item.id),
+                    ads=ads,
                     enabled=True,
                 )
             )

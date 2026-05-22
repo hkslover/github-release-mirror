@@ -5,6 +5,7 @@ from release_mirror.manifest import (
     build_mirror_url,
     build_public_asset_url,
     bundles_equivalent,
+    changed_project_ids,
     to_public_bundle,
 )
 
@@ -201,6 +202,271 @@ class BundleComparisonTest(unittest.TestCase):
         asset = public["projects"]["demo"]["dependencies"]["tool"]["latest"]["assets"][0]
         self.assertIsNone(asset["github_url"])
         self.assertIsNone(asset["mirror_url"])
+
+    def test_to_public_bundle_outputs_ads_in_project_manifest_only(self) -> None:
+        internal = {
+            "generated_at": "2026-05-18T00:00:00Z",
+            "base_download_url": "https://downloads.example.com",
+            "projects": {
+                "demo": {
+                    "id": "demo",
+                    "name": "Demo",
+                    "ads": {
+                        "version": "1.0",
+                        "items": [
+                            {
+                                "id": "ad-1",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/landing",
+                                "sponsor": "Sponsor A",
+                                "title": "Sponsored",
+                                "rich_html": "<p>A</p>",
+                                "image_url": "https://cdn.example.com/a.jpg",
+                                "image_alt": "A",
+                            }
+                        ],
+                    },
+                    "dependencies": {},
+                }
+            },
+        }
+
+        public = to_public_bundle(internal)
+        self.assertNotIn("ads", public["index"])
+        ads = public["projects"]["demo"]["ads"]
+        self.assertEqual(ads["version"], "1.0")
+        self.assertEqual(ads["updated_at"], "2026-05-18T00:00:00Z")
+        self.assertEqual(len(ads["items"]), 1)
+
+    def test_to_public_bundle_preserves_ads_items_order(self) -> None:
+        internal = {
+            "generated_at": "2026-05-18T00:00:00Z",
+            "base_download_url": "https://downloads.example.com",
+            "projects": {
+                "demo": {
+                    "id": "demo",
+                    "name": "Demo",
+                    "ads": {
+                        "version": "1.0",
+                        "items": [
+                            {
+                                "id": "b-ad",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/b",
+                                "sponsor": "Sponsor B",
+                                "title": "B",
+                                "rich_html": "<p>B</p>",
+                                "image_url": "https://cdn.example.com/b.jpg",
+                                "image_alt": "B",
+                            },
+                            {
+                                "id": "a-ad",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/a",
+                                "sponsor": "Sponsor A",
+                                "title": "A",
+                                "rich_html": "<p>A</p>",
+                                "image_url": "https://cdn.example.com/a.jpg",
+                                "image_alt": "A",
+                            },
+                        ],
+                    },
+                    "dependencies": {},
+                }
+            },
+        }
+
+        public = to_public_bundle(internal)
+        items = public["projects"]["demo"]["ads"]["items"]
+        self.assertEqual([item["id"] for item in items], ["b-ad", "a-ad"])
+
+    def test_to_public_bundle_reuses_ads_updated_at_when_ads_unchanged(self) -> None:
+        internal = {
+            "generated_at": "2026-05-18T10:00:00Z",
+            "base_download_url": "https://downloads.example.com",
+            "projects": {
+                "demo": {
+                    "id": "demo",
+                    "name": "Demo",
+                    "ads": {
+                        "version": "1.0",
+                        "items": [
+                            {
+                                "id": "ad-1",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/landing",
+                                "sponsor": "Sponsor A",
+                                "title": "Sponsored",
+                                "rich_html": "<p>A</p>",
+                                "image_url": "https://cdn.example.com/a.jpg",
+                                "image_alt": "A",
+                            }
+                        ],
+                    },
+                    "dependencies": {},
+                }
+            },
+        }
+        previous_public = {
+            "projects": {
+                "demo": {
+                    "ads": {
+                        "version": "1.0",
+                        "updated_at": "2026-05-17T12:00:00Z",
+                        "items": [
+                            {
+                                "id": "ad-1",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/landing",
+                                "sponsor": "Sponsor A",
+                                "title": "Sponsored",
+                                "rich_html": "<p>A</p>",
+                                "image_url": "https://cdn.example.com/a.jpg",
+                                "image_alt": "A",
+                            }
+                        ],
+                    }
+                }
+            }
+        }
+
+        public = to_public_bundle(internal, previous_public_bundle=previous_public)
+        self.assertEqual(
+            public["projects"]["demo"]["ads"]["updated_at"],
+            "2026-05-17T12:00:00Z",
+        )
+
+    def test_to_public_bundle_refreshes_ads_updated_at_when_ads_changed(self) -> None:
+        internal = {
+            "generated_at": "2026-05-18T10:00:00Z",
+            "base_download_url": "https://downloads.example.com",
+            "projects": {
+                "demo": {
+                    "id": "demo",
+                    "name": "Demo",
+                    "ads": {
+                        "version": "1.0",
+                        "items": [
+                            {
+                                "id": "ad-1",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/landing",
+                                "sponsor": "Sponsor A",
+                                "title": "Sponsored changed",
+                                "rich_html": "<p>A</p>",
+                                "image_url": "https://cdn.example.com/a.jpg",
+                                "image_alt": "A",
+                            }
+                        ],
+                    },
+                    "dependencies": {},
+                }
+            },
+        }
+        previous_public = {
+            "projects": {
+                "demo": {
+                    "ads": {
+                        "version": "1.0",
+                        "updated_at": "2026-05-17T12:00:00Z",
+                        "items": [
+                            {
+                                "id": "ad-1",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/landing",
+                                "sponsor": "Sponsor A",
+                                "title": "Sponsored",
+                                "rich_html": "<p>A</p>",
+                                "image_url": "https://cdn.example.com/a.jpg",
+                                "image_alt": "A",
+                            }
+                        ],
+                    }
+                }
+            }
+        }
+
+        public = to_public_bundle(internal, previous_public_bundle=previous_public)
+        self.assertEqual(
+            public["projects"]["demo"]["ads"]["updated_at"],
+            "2026-05-18T10:00:00Z",
+        )
+
+    def test_bundle_comparison_and_changed_projects_include_ads(self) -> None:
+        a = {
+            "index": {
+                "generated_at": "2026-05-18T00:00:00Z",
+                "base_download_url": "https://downloads.example.com",
+                "projects": {"demo": {"name": "Demo", "manifest": "demo.json"}},
+            },
+            "projects": {
+                "demo": {
+                    "generated_at": "2026-05-18T00:00:00Z",
+                    "base_download_url": "https://downloads.example.com",
+                    "project": {"id": "demo", "name": "Demo"},
+                    "dependencies": {},
+                    "ads": {
+                        "version": "1.0",
+                        "updated_at": "2026-05-18T00:00:00Z",
+                        "items": [
+                            {
+                                "id": "ad-1",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/landing",
+                                "sponsor": "Sponsor A",
+                                "title": "Sponsored",
+                                "rich_html": "<p>A</p>",
+                                "image_url": "https://cdn.example.com/a.jpg",
+                                "image_alt": "A",
+                            }
+                        ],
+                    },
+                }
+            },
+        }
+        b = {
+            "index": {
+                "generated_at": "2026-05-18T00:00:00Z",
+                "base_download_url": "https://downloads.example.com",
+                "projects": {"demo": {"name": "Demo", "manifest": "demo.json"}},
+            },
+            "projects": {
+                "demo": {
+                    "generated_at": "2026-05-18T00:00:00Z",
+                    "base_download_url": "https://downloads.example.com",
+                    "project": {"id": "demo", "name": "Demo"},
+                    "dependencies": {},
+                    "ads": {
+                        "version": "1.0",
+                        "updated_at": "2026-05-18T00:00:00Z",
+                        "items": [
+                            {
+                                "id": "ad-1",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/landing",
+                                "sponsor": "Sponsor A",
+                                "title": "Sponsored changed",
+                                "rich_html": "<p>A</p>",
+                                "image_url": "https://cdn.example.com/a.jpg",
+                                "image_alt": "A",
+                            }
+                        ],
+                    },
+                }
+            },
+        }
+
+        self.assertFalse(bundles_equivalent(a, b))
+        self.assertEqual(changed_project_ids(a, b), ["demo"])
 
 
 if __name__ == "__main__":

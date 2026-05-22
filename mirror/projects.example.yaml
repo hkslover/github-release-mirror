@@ -2,6 +2,18 @@ projects:
   - id: demo-project
     name: Demo Project
     enabled: true
+    ads:
+      version: "1.0"
+      items:
+        - id: sponsor-001
+          enabled: true
+          placement: main_steps_top_banner
+          click_url: https://sponsor.example.com/landing
+          sponsor: Sponsor Name
+          title: Sponsored
+          rich_html: "<p>推广文案 <strong>支持基础标签</strong></p>"
+          image_url: https://cdn.example.com/banner-001.jpg
+          image_alt: Sponsor banner
     dependencies:
       - id: tool-linux
         name: Tool Linux

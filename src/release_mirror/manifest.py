@@ -121,11 +121,30 @@ def build_desired_internal_manifest(
             }
             dependencies_count += 1
 
-        project_payloads[project.id] = {
+        project_payload = {
             "id": project.id,
             "name": project.name,
             "dependencies": dependency_payloads,
         }
+        if project.ads is not None:
+            project_payload["ads"] = {
+                "version": project.ads.version,
+                "items": [
+                    {
+                        "id": item.id,
+                        "enabled": item.enabled,
+                        "placement": item.placement,
+                        "click_url": item.click_url,
+                        "sponsor": item.sponsor,
+                        "title": item.title,
+                        "rich_html": item.rich_html,
+                        "image_url": item.image_url,
+                        "image_alt": item.image_alt,
+                    }
+                    for item in project.ads.items
+                ],
+            }
+        project_payloads[project.id] = project_payload
 
     return {
         "generated_at": now_iso8601(),
@@ -157,7 +176,81 @@ def _to_public_latest_release(release: dict[str, Any] | None) -> dict[str, Any] 
     }
 
 
-def to_public_bundle(internal_manifest: dict[str, Any]) -> dict[str, Any]:
+def _normalize_ads_item(item: Any) -> dict[str, Any] | None:
+    if not isinstance(item, dict):
+        return None
+    return {
+        "id": item.get("id"),
+        "enabled": bool(item.get("enabled", True)),
+        "placement": item.get("placement"),
+        "click_url": item.get("click_url"),
+        "sponsor": item.get("sponsor"),
+        "title": item.get("title"),
+        "rich_html": item.get("rich_html"),
+        "image_url": item.get("image_url"),
+        "image_alt": item.get("image_alt"),
+    }
+
+
+def _canonical_ads_payload(ads: Any) -> dict[str, Any] | None:
+    if not isinstance(ads, dict):
+        return None
+    items: list[dict[str, Any]] = []
+    raw_items = ads.get("items", [])
+    if isinstance(raw_items, list):
+        for raw_item in raw_items:
+            normalized_item = _normalize_ads_item(raw_item)
+            if normalized_item is not None:
+                items.append(normalized_item)
+    return {
+        "version": ads.get("version"),
+        "items": items,
+    }
+
+
+def _resolve_public_ads(
+    project_id: str,
+    generated_at: Any,
+    internal_ads: Any,
+    previous_public_bundle: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    desired_ads = _canonical_ads_payload(internal_ads)
+    if desired_ads is None:
+        return None
+
+    previous_ads: dict[str, Any] | None = None
+    if isinstance(previous_public_bundle, dict):
+        previous_projects = previous_public_bundle.get("projects", {})
+        if isinstance(previous_projects, dict):
+            previous_project = previous_projects.get(project_id)
+            if isinstance(previous_project, dict):
+                raw_previous_ads = previous_project.get("ads")
+                if isinstance(raw_previous_ads, dict):
+                    previous_ads = raw_previous_ads
+
+    previous_updated_at = None
+    if isinstance(previous_ads, dict):
+        raw_updated_at = previous_ads.get("updated_at")
+        if isinstance(raw_updated_at, str) and raw_updated_at.strip():
+            previous_updated_at = raw_updated_at.strip()
+
+    unchanged_ads = desired_ads == _canonical_ads_payload(previous_ads)
+    updated_at = (
+        previous_updated_at
+        if unchanged_ads and previous_updated_at
+        else str(generated_at or "").strip()
+    )
+    return {
+        "version": desired_ads.get("version"),
+        "updated_at": updated_at,
+        "items": desired_ads.get("items", []),
+    }
+
+
+def to_public_bundle(
+    internal_manifest: dict[str, Any],
+    previous_public_bundle: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     generated_at = internal_manifest.get("generated_at")
     base_download_url = internal_manifest.get("base_download_url")
     index_projects: dict[str, Any] = {}
@@ -183,7 +276,7 @@ def to_public_bundle(internal_manifest: dict[str, Any]) -> dict[str, Any]:
                 "latest": latest,
             }
 
-        project_manifests[project_id] = {
+        project_manifest = {
             "generated_at": generated_at,
             "base_download_url": base_download_url,
             "project": {
@@ -192,6 +285,15 @@ def to_public_bundle(internal_manifest: dict[str, Any]) -> dict[str, Any]:
             },
             "dependencies": dependencies,
         }
+        ads = _resolve_public_ads(
+            project_id=project_id,
+            generated_at=generated_at,
+            internal_ads=project.get("ads"),
+            previous_public_bundle=previous_public_bundle,
+        )
+        if ads is not None:
+            project_manifest["ads"] = ads
+        project_manifests[project_id] = project_manifest
 
     return {
         "index": {
@@ -233,6 +335,19 @@ def _normalize_release(release: dict[str, Any] | None) -> dict[str, Any] | None:
     }
 
 
+def _normalize_ads_for_comparison(ads: Any) -> dict[str, Any] | None:
+    if not isinstance(ads, dict):
+        return None
+    normalized = _canonical_ads_payload(ads)
+    if normalized is None:
+        return None
+    return {
+        "version": normalized.get("version"),
+        "updated_at": ads.get("updated_at"),
+        "items": normalized.get("items", []),
+    }
+
+
 def _normalize_project_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     dependencies: dict[str, Any] = {}
     raw_dependencies = manifest.get("dependencies", {})
@@ -254,6 +369,7 @@ def _normalize_project_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
             "name": project.get("name"),
         },
         "dependencies": dependencies,
+        "ads": _normalize_ads_for_comparison(manifest.get("ads")),
     }
 
 

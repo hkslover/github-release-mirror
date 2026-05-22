@@ -45,6 +45,18 @@ projects:
   - id: cs2-highlight-tool-v2
     name: cs2-highlight-tool-v2
     enabled: true
+    ads:
+      version: "1.0"
+      items:
+        - id: sponsor-001
+          enabled: true
+          placement: main_steps_top_banner
+          click_url: https://sponsor.example.com/landing
+          sponsor: Sponsor Name
+          title: Sponsored
+          rich_html: "<p>推广文案 <strong>支持基础标签</strong></p>"
+          image_url: https://cdn.example.com/banner-001.jpg
+          image_alt: Sponsor banner
     dependencies:
       - id: advancedfx
         name: advancedfx
@@ -60,6 +72,10 @@ projects:
 - `dependency.id`：同一 project 内唯一
 - `repo`：必须是 `owner/name`
 - `include_patterns`：正则列表，按资产文件名过滤
+- `projects[].ads`：可选；存在时 `version` 必填，`items` 默认为空列表
+- `ads.items[*]` 必填字段：`id / placement / click_url / sponsor / title / rich_html / image_url / image_alt`
+- `ads.items[*].enabled: false` 会在生成 manifest 时被过滤
+- `ads.updated_at` 由系统维护：广告内容不变则复用旧值，内容变化时自动刷新
 
 ### 2) 配置 GitHub Secrets
 
@@ -117,6 +133,23 @@ projects:
   "project": {
     "id": "cs2-highlight-tool-v2",
     "name": "cs2-highlight-tool-v2"
+  },
+  "ads": {
+    "version": "1.0",
+    "updated_at": "2026-05-06T00:00:00Z",
+    "items": [
+      {
+        "id": "sponsor-001",
+        "enabled": true,
+        "placement": "main_steps_top_banner",
+        "click_url": "https://sponsor.example.com/landing",
+        "sponsor": "Sponsor Name",
+        "title": "Sponsored",
+        "rich_html": "<p>推广文案 <strong>支持基础标签</strong></p>",
+        "image_url": "https://cdn.example.com/banner-001.jpg",
+        "image_alt": "Sponsor banner"
+      }
+    ]
   },
   "dependencies": {
     "advancedfx": {

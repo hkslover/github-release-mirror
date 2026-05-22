@@ -96,7 +96,10 @@ def run_sync(
         base_download_url=base_download_url,
         github_token=github_token,
     )
-    desired_public_bundle = to_public_bundle(desired_internal_manifest)
+    desired_public_bundle = to_public_bundle(
+        desired_internal_manifest,
+        previous_public_bundle=existing_public_bundle,
+    )
 
     manifest_changed = not bundles_equivalent(existing_public_bundle, desired_public_bundle)
     changed_projects = changed_project_ids(existing_public_bundle, desired_public_bundle)
