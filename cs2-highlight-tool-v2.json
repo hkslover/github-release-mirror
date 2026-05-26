@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-26T16:28:21Z",
+  "generated_at": "2026-05-26T16:42:47Z",
   "base_download_url": "dl.snowblog.xyz",
   "project": {
     "id": "cs2-highlight-tool-v2",
@@ -28,18 +28,18 @@
     "cs2-highlight-tool": {
       "name": "cs2-highlight-tool",
       "repo": "hkslover/cs2-highlight-tool-v2",
-      "latest_tag": "v0.0.8",
+      "latest_tag": "v0.0.9",
       "latest": {
-        "tag": "v0.0.8",
-        "tag_name": "v0.0.8",
-        "published_at": "2026-05-26T16:27:32Z",
+        "tag": "v0.0.9",
+        "tag_name": "v0.0.9",
+        "published_at": "2026-05-26T16:41:53Z",
         "assets": [
           {
             "name": "cs2-highlight-tool-v2.exe",
             "size": 6993408,
-            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/hkslover/cs2-highlight-tool-v2/v0.0.8/cs2-highlight-tool-v2.exe",
-            "github_url": "https://github.com/hkslover/cs2-highlight-tool-v2/releases/download/v0.0.8/cs2-highlight-tool-v2.exe",
-            "mirror_url": "https://gh-proxy.org/https://github.com/hkslover/cs2-highlight-tool-v2/releases/download/v0.0.8/cs2-highlight-tool-v2.exe"
+            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/hkslover/cs2-highlight-tool-v2/v0.0.9/cs2-highlight-tool-v2.exe",
+            "github_url": "https://github.com/hkslover/cs2-highlight-tool-v2/releases/download/v0.0.9/cs2-highlight-tool-v2.exe",
+            "mirror_url": "https://gh-proxy.org/https://github.com/hkslover/cs2-highlight-tool-v2/releases/download/v0.0.9/cs2-highlight-tool-v2.exe"
           }
         ]
       }
