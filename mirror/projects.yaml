@@ -5,7 +5,7 @@ projects:
     dependencies:
       - id: cs2-highlight-tool
         name: cs2-highlight-tool
-        repo: hkslover/cs2-highlight-tool-v2
+        repo: hkslover/cs2-highlight-tool
         enabled: true
         include_patterns:
           - "cs2-highlight-tool-v2.exe"
