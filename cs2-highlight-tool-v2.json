@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-11T07:07:19Z",
+  "generated_at": "2026-07-14T11:17:02Z",
   "base_download_url": "dl.snowblog.xyz",
   "project": {
     "id": "cs2-highlight-tool-v2",
@@ -28,18 +28,18 @@
     "cs2-highlight-tool": {
       "name": "cs2-highlight-tool",
       "repo": "hkslover/cs2-highlight-tool",
-      "latest_tag": "v2.0.3",
+      "latest_tag": "v2.0.4",
       "latest": {
-        "tag": "v2.0.3",
-        "tag_name": "v2.0.3",
-        "published_at": "2026-06-18T07:37:42Z",
+        "tag": "v2.0.4",
+        "tag_name": "v2.0.4",
+        "published_at": "2026-07-14T11:14:43Z",
         "assets": [
           {
             "name": "cs2-highlight-tool-v2.exe",
-            "size": 7189504,
-            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/hkslover/cs2-highlight-tool/v2.0.3/cs2-highlight-tool-v2.exe",
-            "github_url": "https://github.com/hkslover/cs2-highlight-tool/releases/download/v2.0.3/cs2-highlight-tool-v2.exe",
-            "mirror_url": "https://gh-proxy.org/https://github.com/hkslover/cs2-highlight-tool/releases/download/v2.0.3/cs2-highlight-tool-v2.exe"
+            "size": 7386112,
+            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/hkslover/cs2-highlight-tool/v2.0.4/cs2-highlight-tool-v2.exe",
+            "github_url": "https://github.com/hkslover/cs2-highlight-tool/releases/download/v2.0.4/cs2-highlight-tool-v2.exe",
+            "mirror_url": "https://gh-proxy.org/https://github.com/hkslover/cs2-highlight-tool/releases/download/v2.0.4/cs2-highlight-tool-v2.exe"
           }
         ]
       }
@@ -47,18 +47,18 @@
     "cs2-server-plugin": {
       "name": "cs2-server-plugin",
       "repo": "hkslover/cs2-server-plugin",
-      "latest_tag": "v0.0.4",
+      "latest_tag": "v0.0.5",
       "latest": {
-        "tag": "v0.0.4",
-        "tag_name": "v0.0.4",
-        "published_at": "2026-07-11T07:05:53Z",
+        "tag": "v0.0.5",
+        "tag_name": "v0.0.5",
+        "published_at": "2026-07-14T10:57:51Z",
         "assets": [
           {
-            "name": "cs2-server-plugin-v0.0.4-windows.zip",
-            "size": 86411,
-            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/hkslover/cs2-server-plugin/v0.0.4/cs2-server-plugin-v0.0.4-windows.zip",
-            "github_url": "https://github.com/hkslover/cs2-server-plugin/releases/download/v0.0.4/cs2-server-plugin-v0.0.4-windows.zip",
-            "mirror_url": "https://gh-proxy.org/https://github.com/hkslover/cs2-server-plugin/releases/download/v0.0.4/cs2-server-plugin-v0.0.4-windows.zip"
+            "name": "cs2-server-plugin-v0.0.5-windows.zip",
+            "size": 122155,
+            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/hkslover/cs2-server-plugin/v0.0.5/cs2-server-plugin-v0.0.5-windows.zip",
+            "github_url": "https://github.com/hkslover/cs2-server-plugin/releases/download/v0.0.5/cs2-server-plugin-v0.0.5-windows.zip",
+            "mirror_url": "https://gh-proxy.org/https://github.com/hkslover/cs2-server-plugin/releases/download/v0.0.5/cs2-server-plugin-v0.0.5-windows.zip"
           }
         ]
       }
