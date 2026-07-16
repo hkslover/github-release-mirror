@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-14T11:17:02Z",
+  "generated_at": "2026-07-16T14:46:52Z",
   "base_download_url": "dl.snowblog.xyz",
   "project": {
     "id": "cs2-highlight-tool-v2",
@@ -9,18 +9,18 @@
     "advancedfx": {
       "name": "advancedfx",
       "repo": "advancedfx/advancedfx",
-      "latest_tag": "v2.191.0",
+      "latest_tag": "v2.191.1",
       "latest": {
-        "tag": "v2.191.0",
-        "tag_name": "v2.191.0",
-        "published_at": "2026-07-10T14:35:38Z",
+        "tag": "v2.191.1",
+        "tag_name": "v2.191.1",
+        "published_at": "2026-07-16T14:44:23Z",
         "assets": [
           {
-            "name": "hlae_2_191_0.zip",
-            "size": 8958468,
-            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/advancedfx/advancedfx/v2.191.0/hlae_2_191_0.zip",
-            "github_url": "https://github.com/advancedfx/advancedfx/releases/download/v2.191.0/hlae_2_191_0.zip",
-            "mirror_url": "https://gh-proxy.org/https://github.com/advancedfx/advancedfx/releases/download/v2.191.0/hlae_2_191_0.zip"
+            "name": "hlae_2_191_1.zip",
+            "size": 8957941,
+            "url": "dl.snowblog.xyz/cs2-highlight-tool-v2/advancedfx/advancedfx/v2.191.1/hlae_2_191_1.zip",
+            "github_url": "https://github.com/advancedfx/advancedfx/releases/download/v2.191.1/hlae_2_191_1.zip",
+            "mirror_url": "https://gh-proxy.org/https://github.com/advancedfx/advancedfx/releases/download/v2.191.1/hlae_2_191_1.zip"
           }
         ]
       }
