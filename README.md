@@ -52,9 +52,6 @@ projects:
           enabled: true
           placement: main_steps_top_banner
           click_url: https://sponsor.example.com/landing
-          sponsor: Sponsor Name
-          title: Sponsored
-          rich_html: "<p>推广文案 <strong>支持基础标签</strong></p>"
           image_url: https://cdn.example.com/banner-001.jpg
           image_alt: Sponsor banner
     dependencies:
@@ -73,7 +70,12 @@ projects:
 - `repo`：必须是 `owner/name`
 - `include_patterns`：正则列表，按资产文件名过滤
 - `projects[].ads`：可选；存在时 `version` 必填，`items` 默认为空列表
-- `ads.items[*]` 必填字段：`id / placement / click_url / sponsor / title / rich_html / image_url / image_alt`
+- `ads.items[*]` 必填字段：`id / placement / click_url / image_url`
+- `ads.items[*].placement` 白名单：`main_steps_top_banner`（主界面顶部横幅）/ `main_entry_popup`（进入主界面弹窗）
+- `ads.items[*].click_url`：`http/https`
+- `ads.items[*].image_url`：`http/https`，或内联 `data:image/...` URI
+- `ads.items[*].image_alt`：选填，用于无障碍标签
+- `ads.items[*].sponsor / title / rich_html`：**老契约遗留字段，选填**。当前客户端只渲染图片，会忽略它们；只有比 image-only 契约更旧的客户端才需要它们（且该客户端会直接丢弃 title/rich_html 为空的广告）。新配置请勿填写
 - `ads.items[*].enabled: false` 会在生成 manifest 时被过滤
 - `ads.updated_at` 由系统维护：广告内容不变则复用旧值，内容变化时自动刷新
 
@@ -143,11 +145,11 @@ projects:
         "enabled": true,
         "placement": "main_steps_top_banner",
         "click_url": "https://sponsor.example.com/landing",
-        "sponsor": "Sponsor Name",
-        "title": "Sponsored",
-        "rich_html": "<p>推广文案 <strong>支持基础标签</strong></p>",
         "image_url": "https://cdn.example.com/banner-001.jpg",
-        "image_alt": "Sponsor banner"
+        "image_alt": "Sponsor banner",
+        "sponsor": "",
+        "title": "",
+        "rich_html": ""
       }
     ]
   },
@@ -174,6 +176,11 @@ projects:
   }
 }
 ```
+
+> `ads.items[*]` 中的 `sponsor` / `title` / `rich_html` 属于老契约遗留字段，服务端会继续
+> 输出（值为空字符串），以便旧客户端仍能读取；当前 image-only 客户端会忽略它们。
+> 变更检测把它们纳入比较，但 `null`/缺失/空字符串视为同一值，因此新契约配置不会白刷
+> `updated_at`。
 
 下载字段含义：
 

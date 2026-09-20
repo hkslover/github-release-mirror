@@ -341,6 +341,109 @@ class BundleComparisonTest(unittest.TestCase):
             "2026-05-17T12:00:00Z",
         )
 
+    @staticmethod
+    def _new_contract_ads_internal(generated_at: str, **overrides: object) -> dict:
+        item = {
+            "id": "ad-1",
+            "enabled": True,
+            "placement": "main_steps_top_banner",
+            "click_url": "https://sponsor.example.com/landing",
+            "image_url": "https://cdn.example.com/a.jpg",
+            "image_alt": "A",
+            "sponsor": "",
+            "title": "",
+            "rich_html": "",
+        }
+        item.update(overrides)
+        return {
+            "generated_at": generated_at,
+            "base_download_url": "https://downloads.example.com",
+            "projects": {
+                "demo": {
+                    "id": "demo",
+                    "name": "Demo",
+                    "ads": {"version": "1.0", "items": [item]},
+                    "dependencies": {},
+                }
+            },
+        }
+
+    def test_to_public_bundle_reuses_updated_at_for_new_contract_ads(self) -> None:
+        # An image-only config omits the legacy text fields. Nothing the current
+        # client consumes changed across the two runs, so updated_at must be
+        # reused instead of churning on every sync.
+        first = to_public_bundle(self._new_contract_ads_internal("2026-05-18T00:00:00Z"))
+        self.assertEqual(
+            first["projects"]["demo"]["ads"]["updated_at"],
+            "2026-05-18T00:00:00Z",
+        )
+
+        second = to_public_bundle(
+            self._new_contract_ads_internal("2026-05-18T10:00:00Z"),
+            previous_public_bundle=first,
+        )
+        self.assertEqual(
+            second["projects"]["demo"]["ads"]["updated_at"],
+            "2026-05-18T00:00:00Z",
+        )
+
+    def test_to_public_bundle_treats_absent_and_empty_legacy_ads_fields_alike(
+        self,
+    ) -> None:
+        # A previous bundle written before the fields became optional has no
+        # legacy keys at all. That must compare equal to the "" the current
+        # config emits, otherwise the first new-contract sync would keep
+        # bumping updated_at on every run.
+        previous_public = {
+            "projects": {
+                "demo": {
+                    "ads": {
+                        "version": "1.0",
+                        "updated_at": "2026-05-17T12:00:00Z",
+                        "items": [
+                            {
+                                "id": "ad-1",
+                                "enabled": True,
+                                "placement": "main_steps_top_banner",
+                                "click_url": "https://sponsor.example.com/landing",
+                                "image_url": "https://cdn.example.com/a.jpg",
+                                "image_alt": "A",
+                            }
+                        ],
+                    }
+                }
+            }
+        }
+
+        public = to_public_bundle(
+            self._new_contract_ads_internal("2026-05-18T10:00:00Z"),
+            previous_public_bundle=previous_public,
+        )
+        self.assertEqual(
+            public["projects"]["demo"]["ads"]["updated_at"],
+            "2026-05-17T12:00:00Z",
+        )
+
+    def test_to_public_bundle_publishes_legacy_ads_field_changes(self) -> None:
+        # While a pre-image-only client is still supported, an edit to a legacy
+        # field is visible to that client, so it must still be published.
+        previous_public = to_public_bundle(
+            self._new_contract_ads_internal(
+                "2026-05-18T00:00:00Z", sponsor="Sponsor A"
+            )
+        )
+
+        public = to_public_bundle(
+            self._new_contract_ads_internal(
+                "2026-05-18T10:00:00Z", sponsor="Sponsor B"
+            ),
+            previous_public_bundle=previous_public,
+        )
+        self.assertEqual(
+            public["projects"]["demo"]["ads"]["updated_at"],
+            "2026-05-18T10:00:00Z",
+        )
+
     def test_to_public_bundle_refreshes_ads_updated_at_when_ads_changed(self) -> None:
         internal = {
             "generated_at": "2026-05-18T10:00:00Z",

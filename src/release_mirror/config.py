@@ -10,6 +10,14 @@ from .errors import SyncError
 
 ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
+# Placements understood by the desktop client. The client drops an item with an
+# unknown placement at parse time, so the mirror rejects it at load time instead
+# of publishing an ad that can never render.
+SUPPORTED_AD_PLACEMENTS = (
+    "main_steps_top_banner",
+    "main_entry_popup",
+)
+
 
 @dataclass(frozen=True)
 class Dependency:
@@ -22,14 +30,27 @@ class Dependency:
 
 @dataclass(frozen=True)
 class AdItem:
+    """A sponsored creative for the desktop client.
+
+    The current client contract is image-only: ``image_url`` (remote http/https
+    or an inline ``data:image/...`` URI) is the whole click target for
+    ``click_url``.
+
+    ``sponsor`` / ``title`` / ``rich_html`` are legacy text-card fields. The
+    current client ignores them, but the released v2.0.4 client still drops an ad
+    whose ``title``/``rich_html`` are empty, so they are optional rather than
+    removed. Leave them unset for the new contract and only set them while a
+    pre-image-only client still has to render the ad.
+    """
+
     id: str
     placement: str
     click_url: str
-    sponsor: str
-    title: str
-    rich_html: str
     image_url: str
     image_alt: str
+    sponsor: str = ""
+    title: str = ""
+    rich_html: str = ""
     enabled: bool = True
 
 
@@ -87,10 +108,11 @@ def _require_non_empty_string(value: Any, field: str, context: str) -> str:
     return value.strip()
 
 
-def _require_required_string(value: Any, field: str, context: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise SyncError(f"{context} is missing required field: {field}")
-    return value
+def _optional_string(value: Any) -> str:
+    """Normalize an optional ads string; absent and empty collapse to ""."""
+    if value is None:
+        return ""
+    return str(value).strip()
 
 
 def _validate_http_url(value: str, field: str, context: str) -> str:
@@ -100,6 +122,29 @@ def _validate_http_url(value: str, field: str, context: str) -> str:
             f"Invalid {field} '{value}' in {context}, expected http/https URL"
         )
     return value
+
+
+def _is_data_image_uri(value: str) -> bool:
+    """Mirror the client rule for inline creatives: ``data:image/...,<payload>``."""
+    if "\r" in value or "\n" in value:
+        return False
+    opaque = value[len("data:") :]
+    comma = opaque.find(",")
+    if comma <= 0:
+        return False
+    media_type = opaque[:comma].strip().lower()
+    return media_type.startswith("image/")
+
+
+def _validate_ad_image_url(value: str, field: str, context: str) -> str:
+    """Ad creatives may be a remote http/https URL or an inline data:image URI."""
+    if value.lower().startswith("data:"):
+        if _is_data_image_uri(value):
+            return value
+        raise SyncError(
+            f"Invalid {field} in {context}, expected a data:image/... URI"
+        )
+    return _validate_http_url(value, field, context)
 
 
 def load_projects(path: str | Path) -> list[Project]:
@@ -158,6 +203,11 @@ def load_projects(path: str | Path) -> list[Project]:
                 placement = _require_non_empty_string(
                     ad_item_obj.get("placement"), "placement", ad_context
                 )
+                if placement not in SUPPORTED_AD_PLACEMENTS:
+                    raise SyncError(
+                        f"Invalid placement '{placement}' in {ad_context}, "
+                        f"expected one of: {', '.join(SUPPORTED_AD_PLACEMENTS)}"
+                    )
                 click_url = _validate_http_url(
                     _require_non_empty_string(
                         ad_item_obj.get("click_url"), "click_url", ad_context
@@ -165,25 +215,17 @@ def load_projects(path: str | Path) -> list[Project]:
                     "click_url",
                     ad_context,
                 )
-                sponsor = _require_non_empty_string(
-                    ad_item_obj.get("sponsor"), "sponsor", ad_context
-                )
-                title = _require_non_empty_string(
-                    ad_item_obj.get("title"), "title", ad_context
-                )
-                rich_html = _require_required_string(
-                    ad_item_obj.get("rich_html"), "rich_html", ad_context
-                )
-                image_url = _validate_http_url(
+                image_url = _validate_ad_image_url(
                     _require_non_empty_string(
                         ad_item_obj.get("image_url"), "image_url", ad_context
                     ),
                     "image_url",
                     ad_context,
                 )
-                image_alt = _require_non_empty_string(
-                    ad_item_obj.get("image_alt"), "image_alt", ad_context
-                )
+                image_alt = _optional_string(ad_item_obj.get("image_alt"))
+                sponsor = _optional_string(ad_item_obj.get("sponsor"))
+                title = _optional_string(ad_item_obj.get("title"))
+                rich_html = _optional_string(ad_item_obj.get("rich_html"))
 
                 if bool(ad_item_obj.get("enabled", True)):
                     ads_items.append(
@@ -191,11 +233,11 @@ def load_projects(path: str | Path) -> list[Project]:
                             id=ad_id,
                             placement=placement,
                             click_url=click_url,
+                            image_url=image_url,
+                            image_alt=image_alt,
                             sponsor=sponsor,
                             title=title,
                             rich_html=rich_html,
-                            image_url=image_url,
-                            image_alt=image_alt,
                             enabled=True,
                         )
                     )

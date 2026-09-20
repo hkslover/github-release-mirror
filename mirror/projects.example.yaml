@@ -5,15 +5,19 @@ projects:
     ads:
       version: "1.0"
       items:
+        # Image-only contract: the creative at image_url is the whole click
+        # target for click_url. image_url accepts an http/https URL or an inline
+        # data:image/... URI.
         - id: sponsor-001
           enabled: true
           placement: main_steps_top_banner
           click_url: https://sponsor.example.com/landing
-          sponsor: Sponsor Name
-          title: Sponsored
-          rich_html: "<p>推广文案 <strong>支持基础标签</strong></p>"
           image_url: https://cdn.example.com/banner-001.jpg
           image_alt: Sponsor banner
+          # sponsor / title / rich_html are legacy text-card fields. Omit them
+          # for the current image-only client. Only set them while a client
+          # older than the image-only contract still has to render this ad,
+          # because that client drops an ad whose title/rich_html are empty.
     dependencies:
       - id: tool-linux
         name: Tool Linux

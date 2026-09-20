@@ -56,9 +56,15 @@ def _asset_entry_from_github_asset(
 
     key = build_asset_key(project_id=project_id, repo=repo, tag=tag, asset_name=name)
     download_url = str(asset.get("browser_download_url", "")).strip()
+    try:
+        size = int(asset.get("size", 0))
+    except (TypeError, ValueError) as exc:
+        raise SyncError(
+            f"Asset '{name}' in {repo}@{tag} has a non-numeric size"
+        ) from exc
     return {
         "name": name,
-        "size": int(asset.get("size", 0)),
+        "size": size,
         "key": key,
         "url": build_public_asset_url(base_download_url, key),
         "download_url": download_url,
@@ -135,11 +141,14 @@ def build_desired_internal_manifest(
                         "enabled": item.enabled,
                         "placement": item.placement,
                         "click_url": item.click_url,
+                        "image_url": item.image_url,
+                        "image_alt": item.image_alt,
+                        # Legacy text-card fields, still published so a client
+                        # older than the image-only contract can render the ad.
+                        # They are "" unless the operator opts in.
                         "sponsor": item.sponsor,
                         "title": item.title,
                         "rich_html": item.rich_html,
-                        "image_url": item.image_url,
-                        "image_alt": item.image_alt,
                     }
                     for item in project.ads.items
                 ],
@@ -176,19 +185,34 @@ def _to_public_latest_release(release: dict[str, Any] | None) -> dict[str, Any] 
     }
 
 
+def _ads_text(value: Any) -> str:
+    """Normalize an optional ads string for canonical comparison.
+
+    Absent, ``None`` and ``""`` must collapse to the same value. Otherwise a
+    config that simply stops setting a now-optional field would look changed on
+    every sync and keep bumping ``updated_at``.
+    """
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
 def _normalize_ads_item(item: Any) -> dict[str, Any] | None:
     if not isinstance(item, dict):
         return None
     return {
         "id": item.get("id"),
         "enabled": bool(item.get("enabled", True)),
-        "placement": item.get("placement"),
-        "click_url": item.get("click_url"),
-        "sponsor": item.get("sponsor"),
-        "title": item.get("title"),
-        "rich_html": item.get("rich_html"),
-        "image_url": item.get("image_url"),
-        "image_alt": item.get("image_alt"),
+        "placement": _ads_text(item.get("placement")),
+        "click_url": _ads_text(item.get("click_url")),
+        "image_url": _ads_text(item.get("image_url")),
+        "image_alt": _ads_text(item.get("image_alt")),
+        # Legacy fields stay in the canonical payload so an edit the released
+        # v2.0.4 client still renders is actually published, and normalize to ""
+        # when unset so a new-contract ad compares stable across syncs.
+        "sponsor": _ads_text(item.get("sponsor")),
+        "title": _ads_text(item.get("title")),
+        "rich_html": _ads_text(item.get("rich_html")),
     }
 
 
