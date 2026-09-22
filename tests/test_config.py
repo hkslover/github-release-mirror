@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from release_mirror.config import load_projects
+from release_mirror.config import SUPPORTED_AD_PLACEMENTS, load_projects
 from release_mirror.errors import SyncError
 
 
@@ -186,23 +186,37 @@ projects:
                 load_projects(config)
 
     def test_shipped_projects_yaml_loads(self) -> None:
+        """The shipped config parses, and publishes only ads the client can render.
+
+        How many ads sit on one placement is an editorial choice that changes
+        as sponsors rotate, so this asserts per-ad invariants (id -> creative,
+        placement on the whitelist) rather than a 1:1 placement-to-file map.
+        """
         root = Path(__file__).resolve().parents[1]
         projects = load_projects(root / "mirror" / "projects.yaml")
         project = next(p for p in projects if p.id == "cs2-highlight-tool-v2")
         assert project.ads is not None
+        self.assertEqual(project.ads.version, "1.0")
+
         by_id = {item.id: item for item in project.ads.items}
-        self.assertEqual(
-            by_id["sponsor-88dog-top-banner"].placement, "main_steps_top_banner"
-        )
-        self.assertEqual(
-            by_id["sponsor-88dog-entry-popup"].placement, "main_entry_popup"
-        )
-        for item in project.ads.items:
+        self.assertEqual(len(by_id), len(project.ads.items), "duplicate ad ids")
+
+        # Each sponsor ad id must point at its own creative; a copy-paste that
+        # leaves two ids on one image would otherwise ship silently.
+        expected_creatives = {
+            "sponsor-88dog-top-banner": "88dog_top.png",
+            "sponsor-88dog-top-banner2": "88dog_top2.png",
+            "sponsor-88dog-entry-popup2": "88dog_entry2.png",
+        }
+        for ad_id, filename in expected_creatives.items():
             self.assertEqual(
-                item.image_url,
-                "https://dl.snowblog.xyz/cs2-highlight-tool-v2/static/"
-                + ("88dog_top.png" if item.placement == "main_steps_top_banner" else "88dog_entry.png"),
+                by_id[ad_id].image_url,
+                "https://dl.snowblog.xyz/cs2-highlight-tool-v2/static/" + filename,
             )
+
+        for item in project.ads.items:
+            self.assertIn(item.placement, SUPPORTED_AD_PLACEMENTS)
+            self.assertTrue(item.click_url.startswith("https://"))
 
     def test_ads_missing_placement_raises_sync_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
