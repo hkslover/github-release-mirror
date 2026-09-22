@@ -17,6 +17,18 @@ projects:
           click_url: https://88dog.com/?promotion=CSHL88
           image_url: https://dl.snowblog.xyz/cs2-highlight-tool-v2/static/88dog_entry.png
           image_alt: 广告
+        - id: sponsor-88dog-top-banner2
+          enabled: true
+          placement: main_steps_top_banner
+          click_url: https://88dog.com/?promotion=CSHL88
+          image_url: https://dl.snowblog.xyz/cs2-highlight-tool-v2/static/88dog_top2.png
+          image_alt: 广告
+        - id: sponsor-88dog-entry-popup2
+          enabled: true
+          placement: main_entry_popup
+          click_url: https://88dog.com/?promotion=CSHL88
+          image_url: https://dl.snowblog.xyz/cs2-highlight-tool-v2/static/88dog_entry2.png
+          image_alt: 广告
     dependencies:
       - id: cs2-highlight-tool
         name: cs2-highlight-tool
